@@ -25,3 +25,6 @@ prompt2article = "prompt2article.cli:main"
 
 [tool.setuptools]
 packages = ["prompt2article"]
+
+[tool.setuptools.package-data]
+prompt2article = ["web/*.html", "web/*.css", "web/*.js"]

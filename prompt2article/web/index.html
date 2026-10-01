@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>prompt2article · 根据提示词生成文章</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="dot"></span>
+    <h1>prompt2article</h1>
+  </div>
+  <div class="status" id="status">
+    <span id="statusText">正在读取配置…</span>
+  </div>
+</header>
+
+<main>
+  <!-- ------------------------------------------------ 左：参数 -->
+  <section class="panel">
+    <h2>文章主题</h2>
+    <textarea id="prompt" rows="4"
+      placeholder="例如：写一篇介绍世界线收束概念的科普文章&#10;写得越具体越好：主题 + 读者 + 你想要的落点"></textarea>
+
+    <h2>写作风格</h2>
+    <div class="styles" id="styles"></div>
+
+    <div class="grid">
+      <label>目标字数
+        <input type="number" id="words" min="200" max="20000" step="100" value="1200">
+      </label>
+      <label>最多小节
+        <input type="number" id="sections" min="1" max="20" step="1" value="8">
+      </label>
+      <label>输出语言
+        <select id="language"></select>
+      </label>
+      <label>标题（留空自动拟）
+        <input type="text" id="title" placeholder="自动">
+      </label>
+    </div>
+
+    <label class="full">目标读者（可留空）
+      <input type="text" id="audience" placeholder="例如：有编程基础但没学过密码学">
+    </label>
+
+    <div class="toggles">
+      <label class="check"><input type="checkbox" id="polish"> 生成后逐节润色（更慢、更稳）</label>
+      <label class="check"><input type="checkbox" id="offline"> 离线模拟（不花额度，内容是占位文字）</label>
+      <label class="check"><input type="checkbox" id="save" checked> 保存到 output 文件夹</label>
+    </div>
+
+    <button id="go" class="primary">生成文章</button>
+    <button id="stop" class="ghost" hidden>停止</button>
+
+    <h2 class="mt">最近生成</h2>
+    <ul class="files" id="files"><li class="empty">还没有生成过文章</li></ul>
+  </section>
+
+  <!-- ------------------------------------------------ 右：过程与结果 -->
+  <section class="panel result">
+    <div class="tabs">
+      <button class="tab active" data-tab="preview">预览</button>
+      <button class="tab" data-tab="markdown">Markdown</button>
+      <button class="tab" data-tab="log">过程日志</button>
+      <span class="spacer"></span>
+      <button class="ghost small" id="copy" disabled>复制</button>
+      <button class="ghost small" id="download" disabled>下载 .md</button>
+    </div>
+
+    <div class="view" id="viewPreview">
+      <p class="placeholder">左边填好主题，点「生成文章」。<br>
+        过程会实时显示，完成后这里渲染成排版好的文章。</p>
+    </div>
+    <pre class="view mono" id="viewMarkdown" hidden></pre>
+    <div class="view log" id="viewLog" hidden><p class="placeholder">还没有运行过。</p></div>
+  </section>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
