@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prompt2article"
+version = "0.1.0"
+description = "根据提示词生成文章：先拟标题和大纲，再逐节写作，可选润色。"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "zzm28" }]
+keywords = ["llm", "writing", "article", "deepseek", "openai", "cli"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
+# 零运行时依赖：只用标准库，装完即可用。
+dependencies = []
+
+[project.scripts]
+prompt2article = "prompt2article.cli:main"
+
+[tool.setuptools]
+packages = ["prompt2article"]

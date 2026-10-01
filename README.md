@@ -1,0 +1,219 @@
+# prompt2article
+
+根据一句提示词生成一整篇文章的命令行工具。
+
+**零依赖**：只用 Python 标准库，不需要 `pip install` 任何东西。
+
+## 它和"一次性让模型写一篇"有什么不同
+
+直接把"写一篇 2000 字的文章"丢给模型，长文常见三个毛病：**跑题、车轱辘话、前后重复**。
+这个工具把过程拆成四步，每一步只让模型干一件事：
+
+```
+提示词
+  │
+  ├─ 1. 拟标题
+  ├─ 2. 出大纲        （模型先想清楚要写哪几节）
+  ├─ 3. 逐节写作      （每次只写一节，带上完整大纲避免跑题）
+  └─ 4. 逐节润色      （可选，--polish 打开）
+        │
+        └─ 组装成 Markdown（带 front matter 元数据）
+```
+
+每一节都拿到完整大纲和"这是第 N 节、前后由别人写、不要写衔接语"的约束，
+所以节与节之间不会重复，也不会出现"综上所述"出现在第一节。
+
+## 快速开始
+
+```powershell
+# 1. 进入项目目录
+cd "$env:USERPROFILE\Desktop\新建文件夹"
+
+# 2. 配置 API Key（二选一）
+copy .env.example .env      # 然后编辑 .env 填入 P2A_API_KEY
+# 或者临时用环境变量：
+$env:P2A_API_KEY = "sk-你的key"
+
+# 3. 先离线跑通流程（不需要 Key、不需要联网）
+python -m prompt2article "写一篇介绍世界线收束的科普文章" --offline
+
+# 4. 真实生成
+python -m prompt2article "写一篇介绍世界线收束的科普文章"
+```
+
+生成结果默认写到 `output/<标题>-<时间>.md`。
+
+## 常用命令
+
+```powershell
+# 换个风格、指定字数并润色
+python -m prompt2article "量子计算的机会与泡沫" --style opinion --words 2000 --polish
+
+# 提示词太长，从文件读
+python -m prompt2article --file topic.txt --style tech --out output/tech.md
+
+# 只要正文打到屏幕，不写文件
+python -m prompt2article "给团队讲讲为什么写文档" --stdout
+
+# 额外导出一份 JSON（含每节标题与字数），方便二次处理
+python -m prompt2article "短视频对注意力的影响" --style essay --json
+
+# 看有哪些风格
+python -m prompt2article --list-styles
+
+# 指定目标读者
+python -m prompt2article "解释傅里叶变换" --audience "大一新生" --style science
+```
+
+## 写作风格
+
+| key | 名称 | 特点 |
+| --- | --- | --- |
+| `science` | 科普 | 概念准确、用好类比，面向非专业读者（默认） |
+| `opinion` | 评论 | 观点鲜明、有论证和反驳，不骑墙 |
+| `tutorial` | 教程 | 步骤可复现，含前置条件与排错 |
+| `essay` | 叙事散文 | 场景与细节，节奏舒缓 |
+| `academic` | 学术 | 结构规范、措辞克制，区分事实与推测 |
+| `wechat` | 公众号 | 开头抓人、短段落、金句收尾 |
+| `tech` | 技术博客 | 面向同行，重原理、权衡与坑 |
+| `speech` | 演讲稿 | 口语化、有节奏，适合朗读 |
+
+## 参数
+
+| 参数 | 说明 |
+| --- | --- |
+| `prompt` | 文章主题/提示词（位置参数） |
+| `--file PATH` | 从文件读取提示词（与位置参数二选一） |
+| `--style KEY` | 写作风格，默认 `science` |
+| `--words N` | 目标字数，默认取风格预设（多为 1200） |
+| `--audience TEXT` | 目标读者，会写进提示词 |
+| `--language {zh,en,ja}` | 输出语言，默认 `zh` |
+| `--title TEXT` | 直接指定标题，跳过标题生成 |
+| `--sections N` | 最多保留几个小节，默认 8 |
+| `--polish` | 生成后逐节润色，更慢但更稳 |
+| `--out PATH` | 输出路径，默认 `output/<标题>-<时间>.md` |
+| `--stdout` | 打到标准输出，不写文件 |
+| `--json` | 额外输出同名 `.json` 元数据 |
+| `--offline` | 用内置模拟模型，不需要 Key 和网络 |
+| `--model` / `--base-url` / `--api-key` | 覆盖配置 |
+| `--temperature` / `--timeout` | 覆盖采样温度 / 超时 |
+| `--quiet` | 不打印进度 |
+
+进度信息一律走 **stderr**，正文走 **stdout**，所以 `--stdout` 的结果可以直接 `>` 重定向或管道。
+
+## 配置
+
+优先级从高到低：**命令行参数 → 环境变量 → `.env` 文件 → 内置默认值**。
+
+真实环境变量总是压过 `.env`，这样临时 `export` 一个 Key 调试时不会被旧文件盖住。
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `P2A_API_KEY` | 无 | 也接受 `DEEPSEEK_API_KEY` / `OPENAI_API_KEY` |
+| `P2A_BASE_URL` | `https://api.deepseek.com/v1` | 任何 OpenAI 兼容地址 |
+| `P2A_MODEL` | `deepseek-chat` | 模型名 |
+| `P2A_TIMEOUT` | `120` | 单次请求超时秒数 |
+| `P2A_MAX_RETRIES` | `3` | 针对限流/超时/5xx 的重试次数 |
+| `P2A_TEMPERATURE` | `0.7` | 采样温度 |
+
+因为只要求 OpenAI 兼容的 `/chat/completions`，换成本地模型也只要改地址：
+
+```powershell
+python -m prompt2article "测试" --base-url http://127.0.0.1:11434/v1 --model qwen2.5:14b
+```
+
+## 输出格式
+
+```markdown
+---
+title: "文章标题"
+prompt: "原始提示词"
+style: science
+language: zh
+model: deepseek-chat
+generated_at: 2026-10-01 22:11:24
+word_count: 1348
+---
+
+# 文章标题
+
+## 第一节标题
+
+正文……
+
+## 第二节标题
+
+正文……
+```
+
+front matter 里记的是**复现这篇文章所需的一切**（提示词、风格、模型、目标字数），
+所以任何一篇产出都能回溯到它是怎么来的。
+
+## 测试
+
+```powershell
+python -m unittest discover -v
+```
+
+31 个用例，全部用内置的 `MockClient`，**不需要 Key 也不需要联网**，秒级跑完。
+
+## 常见问题
+
+**报"认证失败"**：Key 无效或过期。检查 `.env` 里有没有多余空格或引号。
+
+**报"余额不足"**：账户需要充值，和代码无关。
+
+**报网络请求失败**：如果直连不通，设置代理再跑：
+
+```powershell
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
+```
+
+**字数总是不达标**：模型对字数只有模糊感知。可以 `--words` 调高一点，或 `--polish`
+打开润色（润色会补足被压缩的表达）。反过来想压短，把 `--sections` 调小更有效。
+
+**标题带了引号或"《》"**：`_one_line()` 已经会剥掉常见的引号和井号；
+如果模型还是加了奇怪前缀，用 `--title` 直接指定。
+
+**想让文章排版成特定模板**：改 `prompt2article/prompts.py` 里的 `system_prompt()`，
+那是所有阶段共用的系统提示词。
+
+## 项目结构
+
+```
+prompt2article/
+├── prompt2article/
+│   ├── __init__.py       版本与导出
+│   ├── __main__.py       python -m 入口
+│   ├── cli.py            参数解析、进度、写文件
+│   ├── config.py         环境变量 / .env 解析与优先级
+│   ├── client.py         OpenAI 兼容客户端 + 离线模拟 + 错误翻译
+│   ├── prompts.py        8 种风格 + 各阶段的提示词构造
+│   └── generator.py      流水线、大纲解析、字数分配、Markdown 组装
+├── tests/
+│   ├── test_core.py      纯函数与端到端（离线）
+│   └── test_cli.py       命令行行为、输出文件、退出码
+├── examples/prompts.md   各风格的提示词范例
+├── output/               生成的文章（已 gitignore）
+├── .env.example          配置样板
+└── pyproject.toml
+```
+
+## 设计取舍
+
+**为什么零依赖？** 用 `urllib` 而不是 `requests`/`openai`，任何有 Python 3.10+ 的机器
+克隆下来就能跑，不用先解决装包和网络问题。代价是要自己写重试和错误翻译——都在
+`client.py` 里，不到 200 行。
+
+**为什么逐节生成而不是一次生成全文？** 长文一次生成必然漂移。逐节 + 完整大纲是
+"用多次短请求换一致性"，代价是请求数变多（4 节文章约 6 次请求）。
+
+**为什么润色也逐节？** 把整篇丢回去润色，一旦输出被截断就会丢掉后半篇；
+逐节润色最坏只影响一节。
+
+**字数怎么算的？** `len(text.split())` 对中文毫无意义，`len(text)` 又会高估英文。
+这里数的是"CJK 字符数 + 英文单词数"，更接近中文作者心里的那个数。
+
+## 许可
+
+MIT，见 [LICENSE](LICENSE)。

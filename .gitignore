@@ -1,0 +1,25 @@
+# 密钥与本地配置：绝对不要提交
+.env
+.env.local
+
+# 生成的文章
+output/
+
+# 测试临时目录
+.tmp-tests/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
