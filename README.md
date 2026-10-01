@@ -64,6 +64,38 @@ python -m prompt2article "写一篇介绍世界线收束的科普文章"
 > **中文显示**：你的控制台代码页是 936，Python 默认输出也是 gbk，两者匹配，中文正常。
 > 如果手动把代码页改成过 65001（UTF-8），记得同时设 `$env:PYTHONUTF8=1`，否则会乱码。
 
+### 方式三：在 PyCharm 里
+
+1. **打开项目**：PyCharm → `File` → `Open` → 选 `桌面\新建文件夹`
+2. **配解释器**：`File` → `Settings` → `Project` → `Python Interpreter` →
+   `Add Interpreter` → `Add Local Interpreter` → `System Interpreter` →
+   选 `C:\Users\zzm28\AppData\Local\Programs\Python\Python313\python.exe`
+
+   本项目**零依赖，不需要装任何包**，选完解释器就能跑。
+3. **运行**：在项目树里右键根目录的 **`run.py`** → **Run 'run'**
+
+   Run 控制台会依次问你主题、风格、字数、是否润色 —— 和双击 `.bat` 一样。
+   没配 Key 时它会自动落到离线模式，不会走到最后一步才报错。
+
+> ⚠️ **不要直接右键运行 `prompt2article/__main__.py`**。单个文件没有包上下文，
+> 它的 `from .cli import main` 会报
+> `attempted relative import with no known parent package`。
+> 用根目录的 `run.py`：它会把项目根加进 `sys.path`，并把工作目录锚定到项目根，
+> 所以 `.env` 找得到、`output/` 也一定落在项目里。
+
+**想固定参数、不每次手输**：`Run` → `Edit Configurations` → `+` → `Python` →
+`Script path` 选 `run.py`，`Parameters` 填：
+
+```
+"量子计算的现状" --style tech --words 2000 --polish
+```
+
+**跑测试**：右键 `tests` 文件夹 → `Run 'Unittests in tests'`（35 项，全部离线，秒级）。
+
+**中文乱码的话**：在 Run Configuration 的 `Environment variables` 里加
+`PYTHONUTF8=1`。PyCharm 控制台的编码和系统代码页（936）不一致时会出现，
+命令行里是正常的。
+
 ## 常用命令
 
 ```powershell
@@ -217,6 +249,7 @@ prompt2article/
 │   └── test_cli.py       命令行行为、输出文件、退出码
 ├── examples/prompts.md   各风格的提示词范例
 ├── output/               生成的文章（已 gitignore）
+├── run.py                IDE 入口：右键 Run 即可，自动锚定工作目录、无 Key 落离线模式
 ├── 生成文章.bat           双击启动器：自动找 Python、设编码、交互式提问
 ├── .env.example          配置样板
 └── pyproject.toml
