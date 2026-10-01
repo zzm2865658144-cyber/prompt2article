@@ -33,6 +33,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("prompt", nargs="?", help="文章主题/提示词")
     parser.add_argument("--file", type=Path, help="从文件读取提示词（与位置参数二选一）")
+    parser.add_argument("-i", "--interactive", action="store_true",
+                        help="交互式询问主题/风格/字数（双击 生成文章.bat 时使用）")
     parser.add_argument("--style", default=prompts.DEFAULT_STYLE,
                         help=f"写作风格，默认 {prompts.DEFAULT_STYLE}；用 --list-styles 查看全部")
     parser.add_argument("--list-styles", action="store_true", help="列出所有写作风格并退出")
@@ -127,6 +129,56 @@ def _write_outputs(args: argparse.Namespace, article: Article, markdown: str) ->
     return written
 
 
+def _ask(text: str, default: str = "") -> str:
+    """`input()` that never blows up on a closed stdin."""
+    suffix = f" [默认 {default}]" if default else ""
+    try:
+        answer = input(f"{text}{suffix}：").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        raise SystemExit(130) from None
+    return answer or default
+
+
+def _collect_interactive(args: argparse.Namespace) -> None:
+    """Ask for topic/style/length, for people who double-click a launcher."""
+    keys = list(prompts.STYLES)
+    print()
+    print(f"{PROG} — 根据提示词生成文章")
+    print("-" * 46)
+    print("写作风格：")
+    for index, key in enumerate(keys, 1):
+        style = prompts.STYLES[key]
+        star = "   ← 默认" if key == prompts.DEFAULT_STYLE else ""
+        print(f"  {index:>2}. {style.name:<6} {style.summary}{star}")
+
+    topic = _ask("\n请输入文章主题（直接回车退出）")
+    if not topic:
+        print("没有输入主题，已退出。")
+        raise SystemExit(0)
+    args.prompt = topic
+
+    choice = _ask(f"\n选择风格序号 1-{len(keys)}", str(keys.index(prompts.DEFAULT_STYLE) + 1))
+    try:
+        picked = int(choice)
+        args.style = keys[picked - 1] if 1 <= picked <= len(keys) else prompts.DEFAULT_STYLE
+    except ValueError:
+        # Also accept the style key itself, e.g. "tech".
+        args.style = choice if choice in prompts.STYLES else prompts.DEFAULT_STYLE
+
+    fallback_words = prompts.STYLES[args.style].default_words
+    try:
+        args.words = max(200, int(_ask("目标字数", str(fallback_words))))
+    except ValueError:
+        args.words = fallback_words
+
+    args.polish = _ask("生成后再润色一遍？（更慢、质量更稳）y/N", "n").lower().startswith("y")
+    print()
+    if not args.quiet:
+        print(f"风格={prompts.STYLES[args.style].name}　字数≈{args.words}　"
+              f"润色={'是' if args.polish else '否'}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -135,6 +187,11 @@ def main(argv: list[str] | None = None) -> int:
         print("可用风格：")
         print(prompts.style_table())
         return 0
+
+    # Explicit only: auto-entering on a TTY made a missing prompt silently block
+    # on input() instead of reporting the usage error callers script against.
+    if args.interactive:
+        _collect_interactive(args)
 
     prompt = _resolve_prompt(args, parser)
     style = prompts.resolve_style(args.style)

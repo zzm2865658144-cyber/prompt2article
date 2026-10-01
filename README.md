@@ -27,21 +27,42 @@
 
 ```powershell
 # 1. 进入项目目录
+## 怎么用：两种方式
+
+### 方式一：双击 `生成文章.bat`（不需要记命令）
+
+1. **双击本目录里的 `生成文章.bat`**
+2. 按提示输入**文章主题** → 选**风格**序号 → 输入**字数** → 问要不要润色
+3. 生成的文件在 **`output` 文件夹**里（自动帮你打开看）
+
+没有配置 API Key 时，它会自动用**离线模拟模式**跑一遍，让你先看到流程长什么样。
+
+> 为什么用 `.bat`：它是双击就能跑的入口，并且会自动找 Python
+> （`python` → `py` → DSH 自带的 Python）并设好中文编码，省得你配环境。
+
+### 方式二：在终端里用（更灵活，能接脚本）
+
+打开终端：按 **Win + X** → 选「终端」或「Windows PowerShell」，然后：
+
+```powershell
 cd "$env:USERPROFILE\Desktop\新建文件夹"
 
-# 2. 配置 API Key（二选一）
+# 1. 配置 API Key（二选一）
 copy .env.example .env      # 然后编辑 .env 填入 P2A_API_KEY
-# 或者临时用环境变量：
+# 或者只在当前窗口临时用：
 $env:P2A_API_KEY = "sk-你的key"
 
-# 3. 先离线跑通流程（不需要 Key、不需要联网）
+# 2. 先离线跑通流程（不需要 Key、不需要联网）
 python -m prompt2article "写一篇介绍世界线收束的科普文章" --offline
 
-# 4. 真实生成
+# 3. 真实生成
 python -m prompt2article "写一篇介绍世界线收束的科普文章"
 ```
 
 生成结果默认写到 `output/<标题>-<时间>.md`。
+
+> **中文显示**：你的控制台代码页是 936，Python 默认输出也是 gbk，两者匹配，中文正常。
+> 如果手动把代码页改成过 65001（UTF-8），记得同时设 `$env:PYTHONUTF8=1`，否则会乱码。
 
 ## 常用命令
 
@@ -84,6 +105,7 @@ python -m prompt2article "解释傅里叶变换" --audience "大一新生" --sty
 | --- | --- |
 | `prompt` | 文章主题/提示词（位置参数） |
 | `--file PATH` | 从文件读取提示词（与位置参数二选一） |
+| `-i` / `--interactive` | 交互式询问主题/风格/字数（`生成文章.bat` 用的就是这个） |
 | `--style KEY` | 写作风格，默认 `science` |
 | `--words N` | 目标字数，默认取风格预设（多为 1200） |
 | `--audience TEXT` | 目标读者，会写进提示词 |
@@ -195,6 +217,7 @@ prompt2article/
 │   └── test_cli.py       命令行行为、输出文件、退出码
 ├── examples/prompts.md   各风格的提示词范例
 ├── output/               生成的文章（已 gitignore）
+├── 生成文章.bat           双击启动器：自动找 Python、设编码、交互式提问
 ├── .env.example          配置样板
 └── pyproject.toml
 ```

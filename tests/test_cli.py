@@ -8,6 +8,7 @@ import os
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from prompt2article.cli import main
 from tests._helpers import temp_dir
@@ -99,6 +100,53 @@ class CliTests(unittest.TestCase):
                 os.chdir(cwd)
             self.assertEqual(code, 0, err.getvalue())
             self.assertIn("从文件读来的主题", out.getvalue())
+
+
+class InteractiveTests(unittest.TestCase):
+    """The double-click launcher path: answers come from input(), not argv."""
+
+    def _run_with_answers(self, answers: list[str], argv: list[str]):
+        out, err = io.StringIO(), io.StringIO()
+        cwd = os.getcwd()
+        with temp_dir() as tmp:
+            os.chdir(tmp)
+            try:
+                with patch("builtins.input", side_effect=answers):
+                    with redirect_stdout(out), redirect_stderr(err):
+                        code = main(argv)
+            finally:
+                os.chdir(cwd)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_answers_drive_the_generation(self) -> None:
+        code, out, err = self._run_with_answers(
+            ["我的测试主题", "1", "500", "n"],
+            ["--interactive", "--offline", "--stdout", "--quiet"],
+        )
+        self.assertEqual(code, 0, err)
+        self.assertIn("我的测试主题", out)
+        # the style menu was shown
+        self.assertIn("科普", out)
+
+    def test_empty_topic_exits_cleanly(self) -> None:
+        with self.assertRaises(SystemExit) as ctx:
+            self._run_with_answers([""], ["--interactive", "--offline", "--stdout", "--quiet"])
+        self.assertEqual(ctx.exception.code, 0)
+
+    def test_style_can_be_given_by_key(self) -> None:
+        code, out, err = self._run_with_answers(
+            ["主题A", "tech", "400", "n"],
+            ["--interactive", "--offline", "--stdout", "--quiet"],
+        )
+        self.assertEqual(code, 0, err)
+        self.assertIn("主题A", out)
+
+    def test_bad_number_falls_back_instead_of_crashing(self) -> None:
+        code, _, err = self._run_with_answers(
+            ["主题B", "99", "abc", "n"],
+            ["--interactive", "--offline", "--stdout", "--quiet"],
+        )
+        self.assertEqual(code, 0, err)
 
 
 if __name__ == "__main__":
